@@ -1,0 +1,50 @@
+[package]
+name = "argus-events"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance event tracking service in Rust showcasing clean architecture patterns"
+license = "MIT"
+repository = "https://github.com/JohnBasrai/argus-events"
+authors = ["John Basrai <John@Basrai.dev>"]
+keywords = ["events", "tracking", "rust", "api", "monitoring", "prometheus"]
+categories = ["web-programming", "api-bindings"]
+
+[dependencies]
+async-trait     = "0.1"
+anyhow          = "1.0"
+
+
+# Commandline parsing
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# Concurrency-safe data structures
+dashmap         = "6.1.0"
+
+# Domain types use this
+chrono      = { version = "0.4", features = ["serde"] }
+uuid        = { version = "1", features = ["serde", "v4"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+
+# API layer (when we get there)
+axum    = "0.7"
+tokio   = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+
+# Metrics (optional, used in Step 5)
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
+# Tracing crates
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+hyper = "1.6.0"
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]

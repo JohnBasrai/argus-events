@@ -1,0 +1,22 @@
+we don't want
+src/repository/memory/mod.rs,x.rx...
+src/repository/postgres/mod.rs,x.rx...
+src/repository/redits/mod.rs,x.rx...
+
+To allow for more scalability?  Or is that overkill, and we can do
+refactor if it every becomes an issue?  This is my we use EMBP (public
+interface of entire repository tree is in repository/mod.rs).
+
+---
+
+🔁 Recommended Coding Approach
+We'll work module-by-module, one small unit at a time, with checkpoints after each:
+
+Step	Module	Goal	Lines	Review?
+1	domain/	Define Event, EventQuery, trait	~60–80	✅ Yes
+2	repository/	memory.rs in-memory impl	~60–80	✅ Yes
+3	api/	POST /events handler	~60	✅ Yes
+4	api/	GET /events?... handler	~70	✅ Yes
+5	metrics/	Define and expose basic counters	~30–40	✅ Yes
+6	main.rs	Wire it all together	~40–50	✅ Yes
+7	tests/	Integration test + unit test scaffold	~50–100	✅ Yes
