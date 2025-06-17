@@ -9,7 +9,6 @@ IMAGE_NAME="argus-events"
 TAG="latest"
 DOCKERFILE="Dockerfile"
 RUN_INTEGRATION_TESTS=true
-SKIP_UNIT_TESTS=false
 USE_COLOR=false
 
 # Colors (empty by default)
@@ -32,7 +31,6 @@ show_help() {
     echo "  --color                Force colored output"
     echo "  --no-color             Disable colored output"
     echo "  --skip-integration     Skip integration tests against container"
-    echo "  --skip-unit-tests      Skip local unit tests (Docker still runs them)"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Colors are auto-detected based on terminal support."
@@ -48,7 +46,6 @@ while [[ $# -gt 0 ]]; do
         --color) USE_COLOR=true; shift ;;
         --no-color) USE_COLOR=false; shift ;;
         --skip-integration) RUN_INTEGRATION_TESTS=false; shift ;;
-        --skip-unit-tests) SKIP_UNIT_TESTS=true; shift ;;
         -h|--help) show_help; exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -65,20 +62,6 @@ fi
 log_info() { echo -e "${YELLOW}$1${NC}"; }
 log_success() { echo -e "${GREEN}✓ $1${NC}"; }
 log_error() { echo -e "${RED}✗ $1${NC}"; }
-
-run_local_unit_tests() {
-    if [[ "$SKIP_UNIT_TESTS" == "true" ]]; then
-        return 0
-    fi
-    
-    log_info "Running local unit tests..."
-    if cargo test --lib --bins; then
-        log_success "Local unit tests passed"
-    else
-        log_error "Local unit tests failed"
-        exit 1
-    fi
-}
 
 build_docker_image() {
     log_info "Building Docker image (includes quality gates)..."
@@ -102,7 +85,7 @@ run_integration_tests() {
     
     # Cleanup function
     cleanup_container() {
-        if [[ "$cleanup_needed" == "true" ]]; then
+        if [[ "$cleanup_needed:=" == "true" ]]; then
             echo "Cleaning up container..."
             docker stop "$container_name" >/dev/null 2>&1 || true
             docker rm "$container_name" >/dev/null 2>&1 || true
@@ -110,7 +93,7 @@ run_integration_tests() {
     }
     
     # Set trap for cleanup
-    trap cleanup_container EXIT
+    trap 'cleanup_needed=true; cleanup_container' EXIT
     
     # Start container
     if ! docker run -d --name "$container_name" -p 0:3000 "${IMAGE_NAME}:${TAG}" >/dev/null; then
@@ -142,9 +125,6 @@ main() {
     log_info "Building Argus Events Docker image..."
     echo "Image: ${IMAGE_NAME}:${TAG}"
     echo "Dockerfile: ${DOCKERFILE}"
-    echo
-    
-    run_local_unit_tests
     echo
     
     build_docker_image

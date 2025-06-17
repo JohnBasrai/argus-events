@@ -17,7 +17,7 @@ The Argus Events API is built using the **EMBP** (Event-driven, Modular, Boundar
 - **Dependency injection**: Components depend on traits, not concrete types
 
 #### Boundary-aware (B)
-- **Explicit boundaries**: API, Service, and Repository layers are clearly defined
+- **Explicit boundaries**: API, Domain, and Repository layers are clearly defined
 - **Data transformation**: Each boundary transforms data appropriately
 - **Error boundaries**: Errors are handled at appropriate architectural layers
 
@@ -26,191 +26,314 @@ The Argus Events API is built using the **EMBP** (Event-driven, Modular, Boundar
 - **Domain-driven design**: Models reflect business domain concepts
 - **Testability**: Architecture supports comprehensive unit and integration testing
 
-## Layer Architecture
+## Pragmatic 3-Layer Architecture
+
+The current implementation follows a **pragmatic clean architecture** appropriate for the problem domain:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         API Layer                            │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │   HTTP Routes   │  │   Validation    │  │   Metrics    │ │
-│  │   (Axum)        │  │   (Serde)       │  │ (Prometheus) │ │
+│  │   HTTP Routes   │  │   JSON I/O      │  │   Metrics    │ │
+│  │   (Axum)        │  │   (Serde)       │  │ Endpoints    │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                                │
+                    Direct delegation to domain
+                                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Domain Layer                           │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   Core Models   │  │  Query Objects  │  │   Metrics    │ │
+│  │   (Event)       │  │ (EventQuery)    │  │  Traits      │ │
 │  └─────────────────┘  └─────────────────┘  └──────────────┘ │
 └─────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                       Service Layer                          │
+│                   Infrastructure Layer                       │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ Business Logic  │  │   Aggregation   │  │ Validation   │ │
-│  │                 │  │   Statistics    │  │ Rules        │ │
+│  │   Repository    │  │     Metrics     │  │   Config     │ │
+│  │ Implementations │  │ (Prometheus)    │  │  (Factory)   │ │
 │  └─────────────────┘  └─────────────────┘  └──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Repository Layer                         │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │   Storage       │  │     Queries     │  │   Indexing   │ │
-│  │   Abstraction   │  │   Filtering     │  │   Caching    │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+│  Memory • NoOp      │  Prometheus • NoOp  │  CLI • Env     │ │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Why No Service Layer?**
+- Simple CRUD operations don't require complex business orchestration
+- API handlers are thin and focused (parse → validate → delegate → respond)
+- Domain logic is minimal (basic event storage and querying)
+- Adding unnecessary abstraction would violate YAGNI principle
+- Current design follows the assignment requirements precisely
 
 ## Module Structure
 
 ### API Module (`src/api/`)
-**Responsibility**: HTTP request/response handling, validation, and routing
+**Responsibility**: HTTP request/response handling, routing, and API contracts
 
-- **Handlers**: Process HTTP requests and delegate to services
-- **Middleware**: Cross-cutting concerns (logging, metrics, CORS)
-- **Validation**: Input sanitization and validation
-- **Serialization**: JSON request/response transformation
+- **Event Routes**: RESTful endpoints for event operations (`POST /events`, `GET /events`)
+- **Metrics Endpoint**: Prometheus metrics exposure (`GET /metrics`)
+- **Request Validation**: Input sanitization and validation using Serde
+- **Response Formatting**: JSON serialization and HTTP status code handling
+- **State Management**: Axum state containing repository and metrics dependencies
 
-**Key Traits**:
+**Key Components**:
 ```rust
-trait EventHandler {
-    async fn create_event(&self, request: CreateEventRequest) -> Result<EventResponse>;
-    async fn get_events(&self, query: EventQuery) -> Result<Vec<EventResponse>>;
-    async fn get_stats(&self) -> Result<StatsResponse>;
-}
+// HTTP handlers
+async fn submit_event(State(state): State<AppState>, Json(input): Json<EventInput>) -> impl IntoResponse
+async fn get_events(State(state): State<AppState>, Query(params): Query<GetEventsQuery>) -> impl IntoResponse
+async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse
+
+// Router factory
+pub fn event_routes(repo: EventRepositoryPtr, metrics: MetricsPtr) -> Router
 ```
 
-### Service Module (`src/service/`)
-**Responsibility**: Business logic, domain rules, and orchestration
+### Domain Module (`src/domain/`)
+**Responsibility**: Core business models, traits, and value objects
 
-- **Event Service**: Core business logic for event processing
-- **Stats Service**: Aggregation and statistical calculations
-- **Validation**: Domain-specific validation rules
-- **Orchestration**: Coordinate multiple repository operations
+- **Event Model**: Core domain entity representing tracked events
+- **Event Query**: Value object for filtering and searching events
+- **Repository Trait**: Abstract interface for event storage
+- **Metrics Trait**: Abstract interface for metrics collection
+- **Type Aliases**: Shared pointer types for dependency injection
 
-**Key Traits**:
+**Key Types**:
 ```rust
-trait EventService {
-    async fn create_event(&self, event: Event) -> Result<Event>;
-    async fn find_events(&self, criteria: EventCriteria) -> Result<Vec<Event>>;
-    async fn calculate_stats(&self, timeframe: TimeRange) -> Result<EventStats>;
+pub struct Event {
+    pub id: Uuid,
+    pub event_type: String,
+    pub timestamp: DateTime<Utc>,
+    pub payload: serde_json::Value,
+}
+
+pub struct EventQuery {
+    pub event_type: Option<String>,
+    pub start: Option<DateTime<Utc>>,
+    pub end: Option<DateTime<Utc>>,
+}
+
+pub trait EventRepository: Send + Sync {
+    async fn store_event(&self, event: Event) -> anyhow::Result<()>;
+    async fn find_events(&self, query: EventQuery) -> anyhow::Result<Vec<Event>>;
+}
+
+pub trait Metrics: Send + Sync + 'static {
+    fn render(&self) -> String;
+    fn record_event_created(&self);
+    fn record_http_request(&self, start: Instant, path: &str, method: &str, status: u16);
 }
 ```
 
 ### Repository Module (`src/repository/`)
-**Responsibility**: Data access, storage, and querying
+**Responsibility**: Concrete implementations of the `EventRepository` trait from domain
 
-- **Storage Abstraction**: Trait-based storage interface
-- **Query Engine**: Filtering and searching capabilities
-- **Indexing**: Efficient data retrieval strategies
-- **Persistence**: Data storage and retrieval implementation
+- **Memory Repository**: Thread-safe in-memory storage using DashMap
+- **Noop Repository**: No-op implementation for testing/development
+- **Factory Function**: Runtime selection of repository implementation
+- **Query Processing**: Filtering by event type and time ranges
 
-**Key Traits**:
+**Trait Implementations**:
 ```rust
-trait EventRepository {
-    async fn save(&self, event: Event) -> Result<Event>;
-    async fn find_by_criteria(&self, criteria: EventCriteria) -> Result<Vec<Event>>;
-    async fn count_by_type(&self, event_type: &str) -> Result<u64>;
-    async fn find_unique_users(&self) -> Result<u64>;
+// Both implement the domain trait
+impl EventRepository for InMemoryEventRepository {
+    async fn store_event(&self, event: Event) -> anyhow::Result<()> { ... }
+    async fn find_events(&self, query: EventQuery) -> anyhow::Result<Vec<Event>> { ... }
 }
+
+impl EventRepository for NoopRepository {
+    async fn store_event(&self, _event: Event) -> anyhow::Result<()> { ... }
+    async fn find_events(&self, _query: EventQuery) -> anyhow::Result<Vec<Event>> { ... }
+}
+
+// Factory function returns trait objects
+pub fn create_repository(kind: &str) -> Result<EventRepositoryPtr>
 ```
 
-### Models Module (`src/models/`)
-**Responsibility**: Domain types, value objects, and data structures
+### Infrastructure Module (`src/infrastructure/`)
+**Responsibility**: Concrete implementations of the `Metrics` trait and external system integration
 
-- **Domain Models**: Core business entities (Event, User, Session)
-- **Value Objects**: Immutable data containers
-- **DTOs**: Data transfer objects for API boundaries
-- **Enums**: Type-safe constants and classifications
+- **Prometheus Metrics**: Production metrics using metrics-exporter-prometheus
+- **Noop Metrics**: No-op implementation for testing/development  
+- **Factory Functions**: Environment-based component selection
+- **Configuration**: Runtime selection via environment variables
 
-### Error Module (`src/error/`)
-**Responsibility**: Error types, error handling, and error transformation
+**Trait Implementations**:
+```rust
+// Both implement the domain trait
+impl Metrics for PrometheusMetrics {
+    fn render(&self) -> String { ... }
+    fn record_event_created(&self) { ... }
+    fn record_http_request(&self, start: Instant, path: &str, method: &str, status: u16) { ... }
+}
 
-- **Domain Errors**: Business logic errors
-- **Infrastructure Errors**: Storage and external service errors
-- **API Errors**: HTTP-specific error responses
-- **Error Mapping**: Transform between error types at boundaries
+impl Metrics for NoopMetrics {
+    fn render(&self) -> String { String::new() }
+    fn record_event_created(&self) {}
+    fn record_http_request(&self, _: Instant, _: &str, _: &str, _: u16) {}
+}
+
+// Factory function returns trait objects
+pub fn create_metrics() -> Result<MetricsPtr>
+```
+
+## Dependency Inversion in Action
+
+The architecture demonstrates clear dependency inversion where:
+
+1. **Domain defines contracts** via traits (`EventRepository`, `Metrics`)
+2. **Infrastructure implements contracts** with concrete types
+3. **API depends on abstractions** via trait objects (`EventRepositoryPtr`, `MetricsPtr`)
+4. **Runtime injection** happens via factory functions
+
+```rust
+// Domain layer defines the contract
+pub trait EventRepository: Send + Sync {
+    async fn store_event(&self, event: Event) -> anyhow::Result<()>;
+    async fn find_events(&self, query: EventQuery) -> anyhow::Result<Vec<Event>>;
+}
+
+// Infrastructure implements the contract
+impl EventRepository for InMemoryEventRepository { ... }
+impl EventRepository for NoopRepository { ... }
+
+// API depends on the abstraction
+#[derive(Clone)]
+pub struct AppState {
+    pub repo: EventRepositoryPtr,    // Arc<dyn EventRepository>
+    pub metrics: MetricsPtr,         // Arc<dyn Metrics>
+}
+
+// Runtime assembly via factories
+let repo = create_repository(&args.repository)?;     // Returns trait object
+let metrics = create_metrics()?;                     // Returns trait object
+let app = event_routes(repo, metrics);               // Injects dependencies
+```
 
 ## SOLID Principles Application
 
 ### Single Responsibility Principle (SRP)
-- Each module has one reason to change
-- API layer only handles HTTP concerns
-- Service layer only handles business logic
-- Repository layer only handles data access
+- **API Module**: Only handles HTTP concerns and routing
+- **Domain Module**: Only contains core business models and interfaces
+- **Repository Module**: Only handles data storage and retrieval
+- **Infrastructure Module**: Only handles external system integration
 
 ### Open/Closed Principle (OCP)
-- Trait-based interfaces allow extension without modification
-- New storage backends can be added by implementing traits
-- New event types can be added without changing existing code
+- New repository backends can be added by implementing `EventRepository` trait
+- New metrics backends can be added by implementing `Metrics` trait
+- Factory functions allow extension without modifying existing code
 
 ### Liskov Substitution Principle (LSP)
-- All implementations of storage traits are interchangeable
+- All `EventRepository` implementations are interchangeable
+- All `Metrics` implementations are interchangeable
 - Mock implementations can replace real implementations in tests
-- Different storage backends (memory, database) behave consistently
 
 ### Interface Segregation Principle (ISP)
-- Traits are focused and minimal
-- Clients depend only on methods they use
-- Separate read and write interfaces where appropriate
+- `EventRepository` trait is focused only on event storage operations
+- `Metrics` trait is focused only on metrics collection
+- No client depends on methods it doesn't use
 
 ### Dependency Inversion Principle (DIP)
-- High-level modules depend on abstractions (traits)
-- Concrete implementations are injected at runtime
+- API layer depends on domain traits, not concrete implementations
+- Repository implementations are injected via factory functions
 - Business logic is independent of infrastructure details
 
 ## Testing Strategy
 
 ### Unit Tests
-- Individual functions and methods
-- Mock dependencies using trait implementations
-- Fast execution, high isolation
+- **Repository Tests**: In-memory storage behavior, filtering logic
+- **Domain Tests**: Model validation and query parameter parsing
+- **Isolated Components**: Each module tested independently
 
 ### Integration Tests
-- Multiple components working together
-- Real storage implementations
-- API endpoint testing
+- **End-to-End API**: Full HTTP request/response cycles
+- **Container Testing**: Docker-based testing with real services
+- **Concurrent Access**: Multi-threaded repository operations
 
-### Property-Based Tests
-- Generate random test data
-- Verify invariants and properties
-- Catch edge cases and corner cases
+### Test Infrastructure
+- **Test Servers**: Ephemeral port binding for parallel test execution
+- **Container Management**: Automatic cleanup and port management
+- **Environment Switching**: Container vs. local test modes
+
+## Current Implementation Status
+
+### Implemented Features
+✅ **Event Storage**: In-memory repository with concurrent access  
+✅ **Event Querying**: Filtering by type and time range  
+✅ **HTTP API**: RESTful endpoints for events and metrics  
+✅ **Metrics Collection**: Prometheus integration with HTTP metrics  
+✅ **Testing Infrastructure**: Comprehensive unit and integration tests  
+✅ **Configuration**: Environment-based component selection  
+✅ **CLI Support**: Command-line argument parsing  
+
+### Architecture Patterns Used
+- **Dependency Injection**: Trait-based abstractions with factory functions
+- **Repository Pattern**: Abstract storage interface with multiple implementations
+- **Factory Pattern**: Runtime component selection based on configuration
+- **Strategy Pattern**: Pluggable metrics and storage backends
 
 ## Performance Considerations
 
 ### Async Performance
-- Non-blocking I/O operations
-- Efficient task scheduling with Tokio
-- Connection pooling for external resources
+- All I/O operations use Tokio async patterns
+- Non-blocking request handling with Axum
+- Efficient task scheduling and resource utilization
 
 ### Memory Management
+- DashMap for efficient concurrent access patterns
 - Zero-copy operations where possible
-- Efficient data structures (BTreeMap for sorted access)
-- Memory-mapped files for large datasets
+- Efficient JSON serialization with Serde
 
-### Caching Strategy
-- In-memory caching for frequently accessed data
-- Cache invalidation strategies
-- Lazy loading of expensive computations
+### Concurrent Access
+- Thread-safe repository implementations
+- Lock-free data structures (DashMap)
+- Shared state via Arc<> smart pointers
 
-## Extensibility Points
+## Future Extensibility Points
 
-### Storage Backends
-- In-memory (current implementation)
-- PostgreSQL/MySQL database
-- Redis for caching
-- File-based storage
+### When a Service Layer Would Be Added
+A service layer would become valuable when implementing:
+- **Complex Business Rules**: Multi-step validation, business workflows
+- **Event Aggregation**: Real-time statistics, complex analytics
+- **Multi-Repository Operations**: Transactions, data consistency
+- **External Integrations**: Webhooks, notifications, third-party APIs
+- **Background Processing**: Async event processing, batch operations
 
-### Event Processing
-- Real-time event streaming
-- Batch processing capabilities
-- Event sourcing and CQRS patterns
+### Future Storage Backends
+- **PostgreSQL**: Persistent database storage
+- **Redis**: High-performance caching layer
+- **File System**: Simple file-based persistence
+- **Event Sourcing**: Append-only event store
 
-### Monitoring and Observability
-- Prometheus metrics collection
-- Distributed tracing with OpenTelemetry
-- Structured logging with correlation IDs
+### Future API Enhancements
+- **GraphQL**: Query language interface
+- **WebSocket**: Real-time event streaming
+- **Batch Operations**: Bulk event submission
+- **API Versioning**: Multiple API versions
+- **Statistics Endpoint**: Aggregated event analytics
 
-### API Enhancements
-- GraphQL interface
-- WebSocket real-time updates
-- API versioning strategies
+### Future Monitoring
+- **Distributed Tracing**: OpenTelemetry integration
+- **Health Checks**: Service health endpoints
+- **Structured Logging**: Correlation IDs and context
+
+## Development Workflow
+
+### Local Development
+- In-memory storage for fast iteration
+- No-op metrics for reduced complexity
+- Comprehensive unit test coverage
+
+### Testing
+- Container-based integration tests
+- Parallel test execution with ephemeral ports
+- Both local and containerized test modes
+
+### Production Deployment
+- Prometheus metrics for monitoring
+- Configurable storage backends
+- Environment-based configuration
 
 ---
 
-This architecture provides a solid foundation for building scalable, maintainable event tracking systems while demonstrating advanced Rust patterns and design principles.
+This architecture provides a clean, maintainable foundation for event tracking while demonstrating modern Rust patterns and clean architecture principles. The current implementation focuses on essential functionality with clear extension points for future enhancements.
