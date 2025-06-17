@@ -10,7 +10,6 @@ mod metrics;
 mod repository;
 
 // Public exports (visible outside this module)
-//b use crate::infrastructure::create_metrics;
 pub use crate::repository::create_repository;
 pub use event::Event;
 pub use event_query::EventQuery;

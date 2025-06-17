@@ -16,9 +16,10 @@ pub(crate) use recorder::{init_metrics, render_metrics};
 ///
 /// Returns a fully initialized metrics instance ready for use.
 pub fn create() -> anyhow::Result<crate::domain::MetricsPtr> {
+    // ---
     tracing::info!("Initializing Prometheus metrics");
     // TODO: Start HTTP server for /metrics endpoint, initialize registry, etc.
-    init_metrics();
+    init_metrics()?;
 
     Ok(Arc::new(PrometheusMetrics::new()))
 }

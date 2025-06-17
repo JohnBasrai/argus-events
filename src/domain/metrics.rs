@@ -5,7 +5,7 @@ use std::time::Instant;
 pub trait Metrics: Send + Sync + 'static {
     // ---
     /// Render current metrics in Prometheus text format.
-    fn render(&self) -> String;
+    fn render(&self) -> anyhow::Result<String>;
 
     /// Record a "event created" event.
     fn record_event_created(&self);

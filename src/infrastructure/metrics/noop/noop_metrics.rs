@@ -1,4 +1,5 @@
 use crate::domain::Metrics;
+use anyhow::Result;
 use std::time::Instant;
 
 /// No-op metrics implementation for testing.
@@ -12,8 +13,8 @@ impl NoopMetrics {
 
 impl Metrics for NoopMetrics {
     // ---
-    fn render(&self) -> String {
-        String::new()
+    fn render(&self) -> Result<String> {
+        Ok(String::new())
     }
     fn record_event_created(&self) {}
     fn record_http_request(&self, _: Instant, _: &str, _: &str, _: u16) {}

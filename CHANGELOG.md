@@ -7,98 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2025-06-16
+## \[0.2.1] – 2025-06-17
 
 ### Added
 
-#### 🎯 Core Infrastructure
-- **Comprehensive metrics system** with Prometheus integration (`src/infrastructure/metrics/`)
-  - Prometheus metrics backend with HTTP request duration histograms
-  - NoOp metrics backend for testing/development
-  - Environment-based metrics selection (`ARGUS_METRICS_TYPE=prom|noop`)
-  - `/metrics` endpoint exposing Prometheus-formatted metrics
+* Unit tests for all remaining assignment requirements, including:
 
-#### 🐳 Production-Ready Containerization
-- **Multi-stage Dockerfile** using cr8s base images (`ghcr.io/johnbasrai/cr8s/rust-dev:1.83.0-rev5`)
-- **Comprehensive quality gates** in Docker build:
-  - Code formatting checks (`cargo fmt --check`)
-  - Linting with warnings as errors (`cargo clippy`)
-  - Security vulnerability scanning (`cargo audit`)
-  - Unit test execution in release mode
-- **Container-per-test integration testing** with automatic cleanup
-- **Production runtime image** based on `cr8s/rust-runtime` (205MB)
+  * `GET /events?type=xyz&start=...&end=...` filtering combinations
+  * Validation of time ranges (`start < end`)
+  * Edge cases: empty filters, invalid timestamps, URL encoding
 
-#### 🔧 Build & Development Infrastructure  
-- **Professional build script** (`scripts/build.sh`) with:
-  - Color output support (auto-detected or forced)
-  - Local unit testing with optional skip
-  - Docker image building with quality gates
-  - Container-based integration testing with port isolation
-  - Automatic test container cleanup
-- **GitHub Actions CI/CD pipeline** (`.github/workflows/ci.yml`):
-  - Leverages existing build script for consistency
-  - Uses cr8s dev image for fast, consistent builds
-  - Security scanning with Trivy
-  - Automated releases with container registry publishing
+### Fixed
 
-#### 📊 Advanced Testing Infrastructure
-- **Container-per-test integration tests** (`tests/integration.rs`):
-  - Each test gets isolated container instance
-  - Environment-aware server selection (embedded vs containerized)
-  - Ephemeral port allocation for concurrent test execution
-  - Automatic container lifecycle management
-- **Comprehensive metrics testing** (`tests/metrics_endpoint.rs`):
-  - Prometheus metrics validation
-  - Load testing with concurrent requests
-  - Content-type verification
-  - NoOp metrics fallback testing
+* Production bugs discovered via test-driven development:
 
-#### 🚦 Production Features
-- **Nginx reverse proxy** configuration with:
-  - Rate limiting (10 requests/second with burst capacity)
-  - Security headers (XSS protection, frame options)
-  - Gzip compression for JSON responses
-  - Health check endpoint proxying
-- **Docker Compose** setup for development and production profiles
-- **Structured logging** with contextual fields throughout request handlers
-
-### Enhanced
-
-#### 📝 API Layer Improvements
-- **Enhanced HTTP handlers** (`src/api/events.rs`):
-  - Comprehensive structured logging with event context
-  - Real-time metrics recording for all endpoints
-  - Detailed error handling with proper HTTP status codes
-  - Request timing and performance tracking
-
-#### 🏗️ Architecture Refinements
-- **Application state management** with shared repository and metrics
-- **Clean separation** between embedded testing and container testing
-- **Environment-based configuration** for metrics backends
-- **Improved error handling** with proper context propagation
+  * Missing time range validation (`start >= end`)
+  * Improper error handling in `/metrics` endpoint
 
 ### Changed
-- **Function signatures** updated to support metrics integration:
-  - `create_app()` now requires both repository and metrics parameters
-  - `event_routes()` updated to use application state pattern
-- **Integration tests** now return `Result<()>` for proper error propagation
-- **Docker Compose** configuration updated to use pre-built images when available
+
+* Improved `/metrics` endpoint with Prometheus rendering fallback and structured error reporting.
+* Enhanced `build.sh`:
+
+  * Color output, verbose test mode, audit fail-fast, and robust cleanup traps.
+* Refactored and compressed the `v0.2.0` changelog for clarity.
+* Hardened integration test helpers and resolved lifetime issues.
+
+---
+
+## \[0.2.0] – 2025-06-16
+
+### Added
+
+* **Metrics system**: Prometheus-backed metrics with `/metrics` endpoint, NoOp fallback, and environment-based selection.
+* **Containerized testing**: One-container-per-test model with isolated ports and automatic cleanup.
+* **CI/CD integration**: Unified build script, GitHub Actions pipeline, Trivy security scanning, and automated container publishing.
+* **Production-ready Docker setup**: Multi-stage builds using cr8s base images and hardened runtime image (205MB).
+* **Nginx proxy**: Rate limiting, security headers, Gzip, and health check routing.
+
+### Changed
+
+* Refactored app state and route handlers for shared metrics/repo access.
+* Enhanced error handling, logging, and test coverage across API and metrics.
+* Docker Compose updated to support dev and prod profiles.
 
 ### Dependencies
-- **Added dev dependencies**:
-  - `futures = "0.3.31"` for async utilities
-  - `serial_test = "3.2"` for test synchronization
-  - `reqwest = { version = "0.11", features = ["json"] }` for HTTP testing
 
-### Infrastructure
-- **Build script improvements** with trap-based container cleanup
-- **CI pipeline** simplified to ~10 lines by leveraging existing build infrastructure
-- **Container registry** integration for automated releases
+* Added: `futures`, `serial_test`, `reqwest` (for HTTP + test orchestration).
 
 ### Documentation
-- **Updated README.md** with comprehensive testing strategy documentation
-- **Enhanced project structure** showing testing and build infrastructure
-- **Container-per-test methodology** explanation for interview showcase
+
+* Updated README and structure diagrams to reflect new architecture and test strategy.
 
 ---
 
@@ -131,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Input validation** for timestamps and required fields
 - **UUID generation** for unique event identification
 
-[Unreleased]: https://github.com/johnbasrai/argus-events/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/johnbasrai/argus-events/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/johnbasrai/argus-events/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/johnbasrai/argus-events/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/johnbasrai/argus-events/releases/tag/v0.1.0

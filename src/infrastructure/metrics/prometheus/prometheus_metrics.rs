@@ -10,6 +10,7 @@
 //! manages rendering all collected metrics in Prometheus text format.
 
 use crate::domain::Metrics;
+use anyhow::Result;
 use std::time::Instant;
 
 /// Prometheus-based metrics implementation.
@@ -23,6 +24,7 @@ pub struct PrometheusMetrics {
 }
 
 impl PrometheusMetrics {
+    // ---
     pub fn new() -> Self {
         tracing::info!("Creating Prometheus metrics");
         PrometheusMetrics {}
@@ -32,17 +34,20 @@ impl PrometheusMetrics {
 impl Metrics for PrometheusMetrics {
     // ---
 
-    fn render(&self) -> String {
+    fn render(&self) -> Result<String> {
+        // ---
         // Use the recorder utility to get actual metrics
         super::render_metrics()
     }
 
     fn record_event_created(&self) {
+        // ---
         tracing::debug!("Recording event created event");
         super::increment_event_created();
     }
 
     fn record_http_request(&self, start: Instant, _path: &str, _method: &str, _status: u16) {
+        // ---
         tracing::debug!("Recording HTTP request duration");
         super::track_http_request(start);
     }

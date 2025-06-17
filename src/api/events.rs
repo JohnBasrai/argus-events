@@ -141,15 +141,26 @@ async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
 
     tracing::debug!("Serving metrics endpoint");
 
-    let metrics_content = state.metrics.render();
-
-    (
-        StatusCode::OK,
-        [("content-type", "text/plain; charset=utf-8")],
-        metrics_content,
-    )
+    match state.metrics.render() {
+        Ok(metrics_content) => (
+            StatusCode::OK,
+            [("content-type", "text/plain; charset=utf-8")],
+            metrics_content,
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!("Failed to render metrics: {}", err);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [("content-type", "text/plain; charset=utf-8")],
+                "Error rendering metrics".to_string(),
+            )
+                .into_response()
+        }
+    }
 }
 
+/// Parse query parameters into EventQuery
 /// Parse query parameters into EventQuery
 fn parse_query(params: GetEventsQuery) -> anyhow::Result<EventQuery> {
     // ---
@@ -163,6 +174,13 @@ fn parse_query(params: GetEventsQuery) -> anyhow::Result<EventQuery> {
         Some(e) => Some(chrono::DateTime::parse_from_rfc3339(&e)?.with_timezone(&chrono::Utc)),
         None => None,
     };
+
+    // Validate that start is before end
+    if let (Some(start_time), Some(end_time)) = (&start, &end) {
+        if start_time >= end_time {
+            return Err(anyhow::anyhow!("Start time must be before end time"));
+        }
+    }
 
     Ok(EventQuery {
         event_type: params.event_type,

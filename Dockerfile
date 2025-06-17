@@ -22,8 +22,20 @@ RUN /bin/sh -c 'echo "👀 Lint checks..." >&2'
 RUN cargo fmt --check
 RUN cargo clippy --release --all-targets --all-features -- -D warnings
 
-# Security audit - adjust ignore list as needed for argus-events
-RUN cargo audit || cargo outdated || true
+# Run security audit - fail on HIGH/CRITICAL vulnerabilities
+RUN cargo audit --deny warnings --deny unsound --deny yanked || \
+    (echo "❌ Security audit failed - check for vulnerabilities" && exit 1)
+
+# Check for outdated dependencies - warn but don't fail build
+RUN cargo outdated --exit-code 1 2>/dev/null || \
+    echo "⚠️  Some dependencies may be outdated - consider updating"
+
+# Alternative: Separate the commands for better control
+RUN echo "🔍 Running security audit..." && \
+    cargo audit --deny warnings --deny unsound --deny yanked
+
+RUN echo "📦 Checking for outdated dependencies..." && \
+    (cargo outdated --exit-code 1 || echo "⚠️  Some dependencies may be outdated")
 
 # Skip integration tests, only run unit tests (following cr8s pattern)
 # Integration tests will be run externally against the built container

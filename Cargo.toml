@@ -1,6 +1,6 @@
 [package]
 name = "argus-events"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "High-performance event tracking service in Rust showcasing clean architecture patterns"
 license = "MIT"
