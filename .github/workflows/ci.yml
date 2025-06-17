@@ -27,5 +27,5 @@ jobs:
       - name: Push to registry (main branch only)
         if: github.ref == 'refs/heads/main'
         run: |
-          docker tag argus-events:latest ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:latest
+          docker tag argus-events:latest ghcr.io/${{ github.repository_owner }}/argus-events:latest
+          docker push ghcr.io/${{ github.repository_owner }}/argus-events:latest
