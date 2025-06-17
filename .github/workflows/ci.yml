@@ -2,30 +2,47 @@ name: CI
 
 on:
   push:
-    branches: [ main ]  # Only main branch pushes
+    branches: [main]
   pull_request:
-    branches: [ main ]  # All PRs to main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Build and test
         run: scripts/build.sh --color --verbose
 
-      - name: Login to GitHub Container Registry
-        if: github.ref == 'refs/heads/main'
+      - name: Extract version from Cargo.toml
+        id: get_version
+        run: |
+          version=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2)
+          echo "version=$version"
+          if [ -z "$version" ]; then
+            echo "Version extraction failed"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Docker login for GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push to registry (main branch only)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          docker tag argus-events:latest ghcr.io/${{ github.repository_owner }}/argus-events:latest
-          docker push ghcr.io/${{ github.repository_owner }}/argus-events:latest
+      - name: Docker build and optionally push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ghcr.io/johnbasrai/argus-events:${{ default('unknown', steps.get_version.outputs.version) }}
+            ghcr.io/johnbasrai/argus-events:${{ github.sha }}
