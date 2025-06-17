@@ -27,6 +27,10 @@ src/
 ├── repository/         ← Data access abstraction
 ├── models/             ← Domain types
 └── error/              ← Structured error handling
+tests/
+└── integration.rs      ← Container-per-test integration tests
+scripts/
+└── build.sh            ← Quality pipeline build script
 ```
 
 ### Key Design Principles
@@ -132,18 +136,50 @@ pub trait EventRepository: Send + Sync {
 
 Current implementation uses concurrent-safe in-memory storage, designed for easy migration to persistent backends like PostgreSQL.
 
-### Testing
+## Testing Strategy
+
+Argus Events demonstrates production-quality testing with a comprehensive multi-tier approach:
+
+### Container-Per-Test Integration Testing
+
+The integration tests showcase advanced Docker-based testing where **each test gets its own isolated container**:
 
 ```bash
-# Run unit tests
-cargo test
+# Run the full test suite including container isolation
+./scripts/build.sh --color
 
-# Run integration tests
+# This will:
+# 1. Run local unit tests
+# 2. Build Docker image with quality gates (lint, format, security audit)
+# 3. Run integration tests with isolated containers per test
+# 4. Automatically clean up all test containers
+```
+
+**Key Features:**
+- **True isolation**: Each test starts a fresh container with clean state
+- **Production parity**: Tests run against the actual Docker image that gets deployed  
+- **Concurrent safe**: Tests can run in parallel without interference
+- **Automatic cleanup**: Test containers are removed automatically
+- **Environment detection**: Smart switching between embedded servers (local dev) and containers (CI)
+
+### Testing Layers
+
+```bash
+# Unit tests (fast, isolated business logic)
+cargo test --lib
+
+# Integration tests (container-based, production-like)
 cargo test --test integration
 
-# Run with coverage
-cargo tarpaulin --out html
+# Full quality pipeline
+./scripts/build.sh
 ```
+
+The testing approach demonstrates:
+- **Docker expertise** with dynamic container lifecycle management
+- **Resource management** with proper cleanup and error handling
+- **Test isolation principles** ensuring reliable, repeatable tests
+- **CI/CD readiness** with environment-aware test strategies
 
 ### Metrics
 
