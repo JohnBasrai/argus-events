@@ -14,7 +14,7 @@ Create a new event with the following structure:
   "event_type": "string",
   "timestamp": "ISO 8601 datetime",
   "user_id": "string",
-  "session_id": "string", 
+  "session_id": "string",
   "properties": {
     "key": "value pairs of additional event data"
   }
@@ -57,11 +57,11 @@ Get aggregated statistics:
 - [x] Unit tests for core functionality
 
 #### Nice to Have (Stretch Goals)
-- [ ] Prometheus metrics integration
-- [ ] Docker containerization  
-- [ ] Structured logging
+- [x] Prometheus metrics integration
+- [x] Docker containerization
+- [x] Structured logging
 - [ ] Database persistence layer
-- [ ] API rate limiting
+- [x] API rate limiting (implemented via nginx reverse proxy)
 - [ ] OpenAPI/Swagger documentation
 
 ### Assessment Criteria

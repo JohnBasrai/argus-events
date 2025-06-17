@@ -42,7 +42,7 @@ impl EventRepository for InMemoryEventRepository {
 
         self.store
             .entry(event.event_type.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(event);
         Ok(())
     }
