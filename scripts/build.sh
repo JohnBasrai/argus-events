@@ -102,7 +102,7 @@ run_integration_tests() {
     
     # Cleanup function
     cleanup_container() {
-        if [[ "$cleanup_needed" == "true" ]]; then
+        if [[ "$cleanup_needed:=" == "true" ]]; then
             echo "Cleaning up container..."
             docker stop "$container_name" >/dev/null 2>&1 || true
             docker rm "$container_name" >/dev/null 2>&1 || true
@@ -110,7 +110,7 @@ run_integration_tests() {
     }
     
     # Set trap for cleanup
-    trap cleanup_container EXIT
+    trap 'cleanup_needed=true; cleanup_container' EXIT
     
     # Start container
     if ! docker run -d --name "$container_name" -p 0:3000 "${IMAGE_NAME}:${TAG}" >/dev/null; then

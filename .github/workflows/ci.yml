@@ -1,0 +1,10 @@
+build-and-test:
+  runs-on: ubuntu-latest
+  container:
+    image: ghcr.io/johnbasrai/cr8s/rust-dev:1.83.0-rev5
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Run full build pipeline  
+      run: scripts/build.sh --color
+

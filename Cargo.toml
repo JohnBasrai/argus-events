@@ -1,6 +1,6 @@
 [package]
 name = "argus-events"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "High-performance event tracking service in Rust showcasing clean architecture patterns"
 license = "MIT"
@@ -41,6 +41,8 @@ hyper = "1.6.0"
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }
+futures = "0.3.31"
+serial_test = "3.2"
 
 [profile.release]
 lto = true

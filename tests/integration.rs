@@ -1,6 +1,6 @@
 //! Comprehensive integration tests for the Argus Events API.
 
-use argus_events::{create_app, create_repository, Event};
+use argus_events::{create_app, create_metrics, create_repository, Event};
 use axum::Router;
 use reqwest::Client;
 use serde_json::json;
@@ -17,7 +17,7 @@ use tokio::net::TcpListener;
 ///
 /// The ephemeral port binding (port 0) lets the OS assign an available port,
 /// preventing conflicts when multiple test processes run simultaneously.
-async fn start_test_server() -> String {
+async fn start_test_server() -> Result<String> {
     // ---
 
     // Check if we should use external containers (set by build.sh)
@@ -27,7 +27,8 @@ async fn start_test_server() -> String {
 
     // Otherwise, start our own test server (for local development)
     let repo = create_repository("memory").expect("Failed to create memory repository");
-    let app: Router = create_app(repo);
+    let metrics = create_metrics()?;
+    let app: Router = create_app(repo, metrics)?;
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr: SocketAddr = listener.local_addr().unwrap();
@@ -39,7 +40,7 @@ async fn start_test_server() -> String {
     // Give the server a moment to start
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-    format!("http://{}", addr)
+    Ok(format!("http://{}", addr))
 }
 
 /// Start a fresh container for this test and return the base URL
@@ -52,9 +53,11 @@ async fn start_test_server() -> String {
 ///
 /// The random port allocation ensures multiple tests can run concurrently
 /// without interfering with each other, even in CI environments.
-async fn start_container_server() -> String {
-    use std::process::Command;
+use anyhow::{anyhow, Context, Result};
+use std::process::Command;
 
+pub async fn start_container_server() -> Result<String> {
+    // ---
     let image_name =
         std::env::var("ARGUS_TEST_IMAGE").unwrap_or_else(|_| "argus-events:latest".to_string());
     let container_name = format!(
@@ -75,25 +78,28 @@ async fn start_container_server() -> String {
             &image_name,
         ])
         .output()
-        .expect("Failed to start Docker container");
+        .with_context(|| "Failed to start Docker container")?;
 
     if !output.status.success() {
-        panic!(
+        return Err(anyhow!(
             "Failed to start container: {}",
             String::from_utf8_lossy(&output.stderr)
-        );
+        ));
     }
 
     // Get the mapped port
     let port_output = Command::new("docker")
         .args(["port", &container_name, "3000/tcp"])
         .output()
-        .expect("Failed to get container port");
+        .with_context(|| "Failed to get container port")?;
 
-    let port_str = String::from_utf8(port_output.stdout).unwrap();
-    let mapped_port = port_str.trim().split(':').last().unwrap();
+    let port_str = String::from_utf8(port_output.stdout).context("Port output not valid UTF-8")?;
+    let mapped_port = port_str
+        .trim()
+        .split(':')
+        .next_back()
+        .ok_or_else(|| anyhow!("Unexpected port mapping format: {}", port_str))?;
 
-    // Wait for container to be ready
     let base_url = format!("http://127.0.0.1:{}", mapped_port);
 
     // Wait up to 10 seconds for the server to be ready
@@ -106,10 +112,9 @@ async fn start_container_server() -> String {
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
     }
 
-    // Schedule cleanup when the test completes
+    // Cleanup container when done
     let cleanup_container = container_name.clone();
     tokio::spawn(async move {
-        // This will run when the test completes (or the process exits)
         let _ = Command::new("docker")
             .args(["stop", &cleanup_container])
             .output();
@@ -118,7 +123,7 @@ async fn start_container_server() -> String {
             .output();
     });
 
-    base_url
+    Ok(base_url)
 }
 
 // Helper function to generate random numbers (simple implementation)
@@ -145,7 +150,7 @@ mod rand {
 async fn get_events_returns_empty_list() -> anyhow::Result<()> {
     // ---
 
-    let base_url = start_test_server().await;
+    let base_url = start_test_server().await?;
     let client = Client::new();
 
     let response = client.get(format!("{}/events", base_url)).send().await?;
@@ -161,7 +166,7 @@ async fn get_events_returns_empty_list() -> anyhow::Result<()> {
 async fn post_and_get_single_event() -> anyhow::Result<()> {
     // ---
 
-    let base_url = start_test_server().await;
+    let base_url = start_test_server().await?;
     let client = Client::new();
 
     // Post an event
@@ -202,7 +207,7 @@ async fn post_and_get_single_event() -> anyhow::Result<()> {
 async fn post_multiple_events_and_filter_by_type() -> anyhow::Result<()> {
     // ---
 
-    let base_url = start_test_server().await;
+    let base_url = start_test_server().await?;
     let client = Client::new();
 
     // Post multiple events of different types
@@ -269,7 +274,7 @@ async fn post_multiple_events_and_filter_by_type() -> anyhow::Result<()> {
 async fn filter_events_by_time_range() -> anyhow::Result<()> {
     // ---
 
-    let base_url = start_test_server().await;
+    let base_url = start_test_server().await?;
     let client = Client::new();
 
     // Post events at different times
@@ -331,7 +336,7 @@ async fn filter_events_by_time_range() -> anyhow::Result<()> {
 async fn invalid_event_returns_400() -> anyhow::Result<()> {
     // ---
 
-    let base_url = start_test_server().await;
+    let base_url = start_test_server().await?;
     let client = Client::new();
 
     // Try to post invalid JSON
@@ -357,7 +362,7 @@ async fn invalid_event_returns_400() -> anyhow::Result<()> {
 async fn events_have_unique_ids() -> anyhow::Result<()> {
     // ---
 
-    let base_url = start_test_server().await;
+    let base_url = start_test_server().await?;
     let client = Client::new();
 
     // Post identical events

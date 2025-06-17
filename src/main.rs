@@ -1,6 +1,6 @@
 //! Application entry point for the Argus Events server.
 
-use argus_events::create_repository;
+use argus_events::{create_metrics, create_repository};
 use argus_events::{event_routes, Args};
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
@@ -20,7 +20,8 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to create repository: {}", e))?;
 
     // Route setup
-    let app = event_routes(repo);
+    let metrics = create_metrics()?;
+    let app = event_routes(repo, metrics);
 
     // Launch server
     let listener = tokio::net::TcpListener::bind(&args.endpoint).await?;

@@ -1,6 +1,7 @@
 
 services:
   argus-events:
+    image: argus-events:latest  # Use existing image, don't build
     build:
       context: .
       dockerfile: Dockerfile
