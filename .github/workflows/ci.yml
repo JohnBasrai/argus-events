@@ -45,4 +45,4 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
             ghcr.io/johnbasrai/argus-events:${{ default('unknown', steps.get_version.outputs.version) }}
-            ghcr.io/johnbasrai/argus-events:${{ github.sha }}
+            ghcr.io/johnbasrai/argus-events:${{ github.sha }}.substring(0, 8)
