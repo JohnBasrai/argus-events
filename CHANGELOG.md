@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## \[0.2.2] – 2025-06-18
 
+### Added
+- Support for `--cargo-quiet` flag in `scripts/build.sh` to suppress verbose cargo output during CI runs and local builds.
+- New `--cargo-quiet` flag in `scripts/build.sh` to suppress verbose cargo output during CI and local builds.
+- `Dockerfile` updated to respect `$CARGO_FLAGS`, allowing control over verbosity in all cargo commands (build, lint, test, audit).
+
 ### Changed
 - **CI/CD integration**: Fix CI workflow error
   * Restore pushing tags with git commit sha number and version from Cargo.toml
+- `Dockerfile` now respects `CARGO_FLAGS` in all cargo commands (build, test, lint, audit).
+- CI workflow now invokes `scripts/build.sh --cargo-quiet` to reduce log noise in GitHub Actions.
+
 
 ## \[0.2.1] – 2025-06-17
 

@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-test:
@@ -16,17 +20,27 @@ jobs:
       - name: Extract version and commit hash
         id: vars
         run: |
+          set -euo pipefail
           VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2)
           SHORT_SHA=$(git rev-parse --short=8 HEAD)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "sha8=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo VERSION=$VERSION
-          echo SHORT_SHA=$SHORT_SHA
+          USERNAME="${GITHUB_REPOSITORY_OWNER,,}"
+          IMAGE_BASE="ghcr.io/$USERNAME"
+
+          echo "version=$VERSION"       >> $GITHUB_OUTPUT
+          echo "sha8=$SHORT_SHA"        >> $GITHUB_OUTPUT
+          echo "image_base=$IMAGE_BASE" >> $GITHUB_OUTPUT
+
+          echo "VERSION    : $VERSION"
+          echo "SHORT_SHA  : $SHORT_SHA"
+          echo "IMAGE_BASE : $IMAGE_BASE"
+
 
       - name: Build and test
-        run: scripts/build.sh --color --verbose
+        run: scripts/build.sh --color --verbose --cargo-quiet
 
       - name: Login to GitHub Container Registry
+        # We're only going to push images when target of merge is main
+        # ...and we only need to login to GHCR to push
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
@@ -35,11 +49,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push to registry (main branch only)
+        # Only push images when target of merge is main, see login above.
         if: github.ref == 'refs/heads/main'
         run: |
           VERSION=${{ steps.vars.outputs.version }}
           SHA8=${{ steps.vars.outputs.sha8 }}
-          IMAGE_BASE="ghcr.io/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_BASE=${{ steps.vars.outputs.image_base }}
           REPO_PATH="$IMAGE_BASE/argus-events"
 
           docker tag argus-events:latest $REPO_PATH:$VERSION

@@ -34,6 +34,7 @@ Options:
   --color                Force colored output
   --no-color             Disable colored output (default)
   --skip-integration     Skip integration tests against container
+  --cargo-quiet          Passes --quiet
   -h, --help             Show this help message
 
 Colors are auto-detected based on terminal support.
@@ -52,6 +53,7 @@ while [[ $# -gt 0 ]]; do
         --color) USE_COLOR=true; shift ;;
         --no-color) USE_COLOR=false; shift ;;
         --skip-integration) RUN_INTEGRATION_TESTS=false; shift ;;
+        --cargo-quiet) CARGO_FLAGS="--quiet"; shift ;;
         -h|--help) show_help; exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -76,8 +78,11 @@ build_docker_image() {
     # Capture build output to check for warnings/errors
     local build_log=$(mktemp)
     local build_success=true
-    
-    if docker build -f "${DOCKERFILE}" -t "${IMAGE_NAME}:${TAG}" . 2>&1 | tee "$build_log"; then
+
+    if docker build \
+              --build-arg CARGO_FLAGS=${CARGO_FLAGS} \
+              -f "${DOCKERFILE}" \
+              -t "${IMAGE_NAME}:${TAG}" . 2>&1 | tee "$build_log"; then
         # Check for security audit failures in build log
         if grep -v "^#[0-9].*\[.*\] RUN" "$build_log" | \
                 grep -q "❌ Security audit failed - check for vulnerabilities"; then
@@ -157,13 +162,13 @@ run_integration_tests() {
     local test_log=$(mktemp)
     local test_success=true
     
-    if cargo test -- ${VERBOSE_TEST} 2>&1 | tee "$test_log"; then
+    if cargo test ${CARGO_FLAGS} -- ${VERBOSE_TEST} 2>&1 | tee "$test_log"; then
         # Check for test failures or concerning output
         if grep -q "FAILED\|panicked at\|thread.*panicked" "$test_log"; then
             log_error "Tests reported as passed but failures detected in output"
             test_success=false
         fi
-        
+
         # Show test summary
         local test_count=$(grep -c "test.*ok" "$test_log" 2>/dev/null || echo "0")
         if [[ "$test_success" == "true" ]]; then
