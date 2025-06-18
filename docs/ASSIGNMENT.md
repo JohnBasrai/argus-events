@@ -1,8 +1,8 @@
 # Technical Assessment - Event Tracking REST API
 
-## Assignment from c/side (via Gensyn Hiring Team)
+## Assignment from ...
 
-This document captures the actual technical assessment requirements from the c/side team.
+This document captures the actual technical assessment requirements.
 
 ### Objective
 Design and implement a minimal event tracking service using Rust. The service should allow clients to submit events, store them, and query them based on certain criteria.
