@@ -39,10 +39,11 @@ jobs:
         run: |
           VERSION=${{ steps.vars.outputs.version }}
           SHA8=${{ steps.vars.outputs.sha8 }}
-          REPO=ghcr.io/${{ github.repository_owner }}/argus-events
+          IMAGE_BASE="ghcr.io/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          REPO_PATH="$IMAGE_BASE/argus-events"
 
-          docker tag argus-events:latest $REPO:$VERSION
-          docker tag argus-events:latest $REPO:$SHA8
+          docker tag argus-events:latest $REPO_PATH:$VERSION
+          docker tag argus-events:latest $REPO_PATH:$SHA8
 
-          docker push $REPO:$VERSION
-          docker push $REPO:$SHA8
+          docker push $REPO_PATH:$VERSION
+          docker push $REPO_PATH:$SHA8
