@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## \[0.2.2] – 2025-06-18
+
+### Changed
+- **CI/CD integration**: Fix CI workflow error
+  * Restore pushing tags with git commit sha number and version from Cargo.toml
+
 ## \[0.2.1] – 2025-06-17
 
 ### Added
