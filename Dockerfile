@@ -2,6 +2,8 @@
 # Stage 1: Build environment
 FROM ghcr.io/johnbasrai/cr8s/rust-dev:1.83.0-rev5 as builder
 
+ARG CARGO_FLAGS=
+
 # Set working directory
 WORKDIR /app
 
@@ -12,7 +14,7 @@ COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 
 # Build dependencies (this layer will be cached unless Cargo.toml changes)
-RUN cargo build --release && rm -rf src
+RUN cargo build ${CARGO_FLAGS} --release && rm -rf src
 
 # Copy source code
 COPY src ./src
@@ -20,30 +22,23 @@ COPY src ./src
 # Run comprehensive testing suite following cr8s patterns
 RUN /bin/sh -c 'echo "👀 Lint checks..." >&2'
 RUN cargo fmt --check
-RUN cargo clippy --release --all-targets --all-features -- -D warnings
+RUN cargo clippy ${CARGO_FLAGS} --release --all-targets --all-features -- -D warnings
 
 # Run security audit - fail on HIGH/CRITICAL vulnerabilities
-RUN cargo audit --deny warnings --deny unsound --deny yanked || \
+RUN cargo audit ${CARGO_FLAGS} --deny warnings --deny unsound --deny yanked || \
     (echo "❌ Security audit failed - check for vulnerabilities" && exit 1)
 
 # Check for outdated dependencies - warn but don't fail build
-RUN cargo outdated --exit-code 1 2>/dev/null || \
-    echo "⚠️  Some dependencies may be outdated - consider updating"
-
-# Alternative: Separate the commands for better control
-RUN echo "🔍 Running security audit..." && \
-    cargo audit --deny warnings --deny unsound --deny yanked
-
 RUN echo "📦 Checking for outdated dependencies..." && \
-    (cargo outdated --exit-code 1 || echo "⚠️  Some dependencies may be outdated")
+    (cargo outdated ${CARGO_FLAGS} --exit-code 1 || echo "⚠️  Some dependencies may be outdated")
 
 # Skip integration tests, only run unit tests (following cr8s pattern)
 # Integration tests will be run externally against the built container
-RUN cargo test --release --lib --bins -- --nocapture
+RUN cargo test ${CARGO_FLAGS} --release --lib --bins -- --nocapture
 
 # Build the actual application
 # Touch main.rs to ensure it rebuilds
-RUN cargo build --release
+RUN cargo build ${CARGO_FLAGS} --release
 
 # Stage 2: Runtime environment
 FROM ghcr.io/johnbasrai/cr8s/rust-runtime:0.1.3
