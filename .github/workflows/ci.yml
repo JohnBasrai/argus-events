@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]  # Only main branch pushes
+    branches: [ main ]
   pull_request:
-    branches: [ main ]  # All PRs to main
+    branches: [ main ]
 
 jobs:
   build-and-test:
@@ -12,6 +12,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Extract version and commit hash
+        id: vars
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2)
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "sha8=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo VERSION=$VERSION
+          echo SHORT_SHA=$SHORT_SHA
 
       - name: Build and test
         run: scripts/build.sh --color --verbose
@@ -27,5 +37,12 @@ jobs:
       - name: Push to registry (main branch only)
         if: github.ref == 'refs/heads/main'
         run: |
-          docker tag argus-events:latest ghcr.io/${{ github.repository_owner }}/argus-events:latest
-          docker push ghcr.io/${{ github.repository_owner }}/argus-events:latest
+          VERSION=${{ steps.vars.outputs.version }}
+          SHA8=${{ steps.vars.outputs.sha8 }}
+          REPO=ghcr.io/${{ github.repository_owner }}/argus-events
+
+          docker tag argus-events:latest $REPO:$VERSION
+          docker tag argus-events:latest $REPO:$SHA8
+
+          docker push $REPO:$VERSION
+          docker push $REPO:$SHA8
