@@ -212,3 +212,5 @@ This table maps each assignment requirement to its implementation using stable R
 | Graceful shutdown (verified, logged)                              | main.rs: with_graceful_shutdown()                                          |
 | Query param validation: start < end                               | api/events.rs: parse_query()                                               |
 | GET /events?type=...,start=...,end=... fully tested               | tests/integration.rs: post_multiple_events_and_filter_by_type() and others |
+
+
