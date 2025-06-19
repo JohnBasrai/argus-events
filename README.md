@@ -28,7 +28,8 @@ src/
 ├── models/             ← Domain types
 └── error/              ← Structured error handling
 tests/
-└── integration.rs      ← Container-per-test integration tests
+├── integration.rs      ← integration tests
+└── metrics_endpoint.rs ← metrics collection test
 scripts/
 └── build.sh            ← Quality pipeline build script
 ```
