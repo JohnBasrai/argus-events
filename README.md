@@ -235,6 +235,11 @@ This project demonstrates production-ready patterns:
 
 This project serves as both a functional event tracking service and a demonstration of Rust architectural patterns. While primarily for educational purposes, contributions and feedback are welcome!
 
+### Notes
+
+- Graceful shutdown is now implemented using `tokio::signal::ctrl_c()` and Axum’s `with_graceful_shutdown`.
+  Although initially marked complete in `ASSIGNMENT.md`, this was properly wired up and manually verified later.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -1,6 +1,6 @@
 [package]
 name = "argus-events"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "High-performance event tracking service in Rust showcasing clean architecture patterns"
 license = "MIT"
@@ -28,7 +28,7 @@ serde_json  = "1"
 
 # API layer (when we get there)
 axum    = "0.7"
-tokio   = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tokio   = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 
 # Metrics (optional, used in Step 5)
 metrics = "0.22"

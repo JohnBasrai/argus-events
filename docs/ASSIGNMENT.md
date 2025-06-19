@@ -57,6 +57,7 @@ Example: `GET /events?type=user_signup&start=2025-06-16T10:00:00Z&end=2025-06-16
 
 #### Error Handling ✅ ALL COMPLETED  
 - ✅ **Gracefully handle invalid input** - Proper input validation with helpful error messages
+  ⏱️ Note: Although previously marked complete, this behavior was only wired up in `main.rs` after final manual verification.
 - ✅ **Handle malformed requests** - JSON parsing errors return appropriate HTTP 400 responses
 - ✅ **Handle internal failures** - Repository errors properly propagated with HTTP 500 responses
 - ✅ **Query parameter validation** - Invalid timestamps and start > end validation with HTTP 400 responses
@@ -107,6 +108,22 @@ The implementation followed proper TDD methodology:
 - ✅ **5 unit tests** - Repository and metrics functionality
 - ✅ **12 integration tests** - Complete query parameter coverage including edge cases
 - ✅ **4 metrics tests** - Prometheus integration and endpoint validation
+
+¹ Graceful shutdown is not unit testable in Rust due to OS-level signal handling, but was verified manually:
+
+- Server starts normally
+- `Ctrl+C` cleanly logs shutdown and exits
+
+Example:
+```
+
+\$ cargo run --quiet --bin argus-events
+2025-06-19T00:23:18.734787Z  INFO argus\_events: 🚀 Server running on [http://0.0.0.0:3000](http://0.0.0.0:3000)
+^C2025-06-19T00:23:21.312884Z  INFO argus\_events: 🛑 Received Ctrl+C, shutting down gracefully...
+\$
+
+```
+
 
 ### Query Parameter Implementation ✅ FULLY COMPLETE
 The assignment specifically required `GET /events?type=xyz&start=...&end=...` functionality. This has been fully implemented and tested:

@@ -1,8 +1,8 @@
 //! Application entry point for the Argus Events server.
-
 use argus_events::{create_metrics, create_repository};
 use argus_events::{event_routes, Args};
 use clap::Parser;
+use tokio::signal;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -12,7 +12,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Init logging
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .init();
 
     // Shared repository
@@ -25,11 +27,21 @@ async fn main() -> anyhow::Result<()> {
 
     // Launch server
     let listener = tokio::net::TcpListener::bind(&args.endpoint).await?;
-
     tracing::info!("🚀 Server running on http://{}", args.endpoint);
 
-    // Use axum::serve instead of hyper::Server
-    axum::serve(listener, app).await?;
+    // Graceful shutdown using tokio::signal::ctrl_c().
+    // This was listed as complete in docs/ASSIGNMENT.md, but was not implemented until this commit.
+    // Cannot be unit tested directly (due to signal handling), but verified manually:
+    // - Server starts
+    // - Ctrl+C triggers log and clean shutdown
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async {
+            signal::ctrl_c()
+                .await
+                .expect("failed to install Ctrl+C handler");
+            tracing::info!("🛑 Received Ctrl+C, shutting down gracefully...");
+        })
+        .await?;
 
     Ok(())
 }
