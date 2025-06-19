@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## \[v0.2.3] – 2025-06-18
 
+### Documentation
+- Added requirement verification matrix for v0.2.3 to `docs/ASSIGNMENT.md`
+
 ### Fixed
 - Implemented graceful shutdown via `tokio::signal::ctrl_c()` using Axum’s `with_graceful_shutdown`.
-  Although `docs/ASSIGNMENT.md` stated this was already complete, it had not yet been wired into `main.rs`.
+  This involved functional changes to `main.rs`, wiring in the shutdown handler and logging.
+  Although `docs/ASSIGNMENT.md` marked it complete, it had not been implemented before this release.
 
 ### Verified
 - Manual test: confirmed `Ctrl+C` cleanly exits the server and triggers shutdown log.

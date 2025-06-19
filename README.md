@@ -240,6 +240,12 @@ This project serves as both a functional event tracking service and a demonstrat
 - Graceful shutdown is now implemented using `tokio::signal::ctrl_c()` and Axum’s `with_graceful_shutdown`.
   Although initially marked complete in `ASSIGNMENT.md`, this was properly wired up and manually verified later.
 
+### Requirement Coverage
+
+For a complete mapping of all assignment requirements to source code (with line numbers), see:
+
+➡️ [`docs/ASSIGNMENT.md`](docs/ASSIGNMENT.md) → “✅ Requirement Verification Matrix (from tag: v0.2.3)”
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
