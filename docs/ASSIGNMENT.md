@@ -178,3 +178,37 @@ This demonstrates understanding of rate limiting concepts and provides a product
 - **Test-Driven Development** ensuring quality and discovering edge cases
 - **Comprehensive Error Handling** with proper HTTP status codes and validation
 - **Real-world Deployment** with Docker containers and Prometheus metrics
+
+### ✅ Requirement Verification Matrix (from tag: v0.2.3)
+
+The following table maps each requirement to its implementation in the codebase:
+
+| Requirement                                                       | Verified In                                                                      |
+|:------------------------------------------------------------------|:---------------------------------------------------------------------------------|
+| POST /events accepts JSON with event_type, timestamp, and payload | ./src/api/events.rs:L29–L45                                                      |
+| GET /events filters by type and/or time range                     | ./src/api/events.rs:L74–L117                                                     |
+| Query param parsing and validation                                | ./src/api/events.rs:L119–L150                                                    |
+| Rust + async: Tokio + Axum used throughout                        | ./src/main.rs:L1, L13, L41; ./src/api/events.rs:L29                              |
+| Error handling: meaningful HTTP status codes                      | ./src/api/events.rs:L55–L117                                                     |
+| Input validation for endpoints                                    | ./src/api/events.rs:L119–L147                                                    |
+| JSON request/response format                                      | ./src/api/events.rs:L29–L117                                                     |
+| In-memory storage with DashMap                                    | ./src/repository/memory.rs:L13–L88                                               |
+| Thread-safe concurrent access (Arc + DashMap)                     | ./src/repository/memory.rs:L13–L20                                               |
+| Rust ownership/thread safety idioms (Arc, traits)                 | ./src/domain/repository.rs:L12–L21; ./src/repository/memory.rs:L13–L88           |
+| Unit + integration tests                                          | ./tests/integration.rs:L1–L243; ./src/repository/memory.rs:L91–L186              |
+| Structured for future persistence (trait-based repo)              | ./src/domain/repository.rs:L12–L21; ./src/repository/mod.rs:L10–L22              |
+| Efficient querying by type + time range                           | ./src/repository/memory.rs:L52–L88                                               |
+| Handles invalid input and malformed requests                      | ./src/api/events.rs:L119–L150                                                    |
+| Handles internal failures cleanly                                 | ./src/api/events.rs:L107–L117                                                    |
+| Handles bad query params with 400s                                | ./src/api/events.rs:L119–L147                                                    |
+| Prometheus metrics integration                                    | ./src/infrastructure/metrics/prometheus/*.rs; ./src/api/events.rs:L56, L91, L134 |
+| Metrics endpoint                                                  | ./src/api/events.rs:L152–L171                                                    |
+| Dockerfile provided (via repo context)                            | README.md, not visible here                                                      |
+| Structured logging with tracing                                   | ./src/api/events.rs:L38, L63, L94, L138                                          |
+| Comprehensive documentation                                       | ASSIGNMENT.md + README.md                                                        |
+| Advanced testing: container + local                               | ./tests/integration.rs:L20–L90                                                   |
+| Clean architecture: trait-based injection                         | ./src/domain/repository.rs:L12–L21; ./src/lib.rs:L19–L22                         |
+| TDD with bug discovery                                            | ASSIGNMENT.md section                                                            |
+| Graceful shutdown (verified, logged)                              | ./src/main.rs:L42–L55                                                            |
+| Query param validation: start < end                               | ./src/api/events.rs:L144–L147                                                    |
+| GET /events?type=...,start=...,end=... fully tested               | ./tests/integration.rs:L115+                                                     |
