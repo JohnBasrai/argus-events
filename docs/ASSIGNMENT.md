@@ -178,3 +178,37 @@ This demonstrates understanding of rate limiting concepts and provides a product
 - **Test-Driven Development** ensuring quality and discovering edge cases
 - **Comprehensive Error Handling** with proper HTTP status codes and validation
 - **Real-world Deployment** with Docker containers and Prometheus metrics
+
+### ✅ Requirement Verification Matrix (Symbolic, from tag: v0.2.3)
+
+This table maps each assignment requirement to its implementation using stable Rust function/module names:
+
+| Requirement                                                       | Verified In                                                                |
+|:------------------------------------------------------------------|:---------------------------------------------------------------------------|
+| POST /events accepts JSON with event_type, timestamp, and payload | src/api/events.rs: submit_event()                                          |
+| GET /events filters by type and/or time range                     | src/api/events.rs: get_events()                                            |
+| Query param parsing and validation                                | src/api/events.rs: parse_query()                                           |
+| Rust + async: Tokio + Axum used throughout                        | main.rs, api/events.rs, async tests                                        |
+| Error handling: meaningful HTTP status codes                      | src/api/events.rs: submit_event(), get_events()                            |
+| Input validation for endpoints                                    | src/api/events.rs: parse_query(), EventInput                               |
+| JSON request/response format                                      | src/api/events.rs: EventInput, submit_event(), get_events()                |
+| In-memory storage with DashMap                                    | src/repository/memory.rs: InMemoryEventRepository                          |
+| Thread-safe concurrent access (Arc + DashMap)                     | src/repository/memory.rs: InMemoryEventRepository                          |
+| Rust ownership/thread safety idioms (Arc, traits)                 | domain/*.rs, repository/*.rs, memory.rs                                    |
+| Unit + integration tests                                          | tests/integration.rs, repository/memory.rs tests                           |
+| Structured for future persistence (trait-based repo)              | domain/repository.rs: EventRepository trait                                |
+| Efficient querying by type + time range                           | repository/memory.rs: find_events()                                        |
+| Handles invalid input and malformed requests                      | api/events.rs: parse_query(), get_events()                                 |
+| Handles internal failures cleanly                                 | api/events.rs: submit_event(), get_events()                                |
+| Handles bad query params with 400s                                | api/events.rs: parse_query()                                               |
+| Prometheus metrics integration                                    | infrastructure/metrics/prometheus/*.rs                                     |
+| Metrics endpoint                                                  | api/events.rs: metrics_handler()                                           |
+| Dockerfile provided (via repo context)                            | README.md, not code-scanned                                                |
+| Structured logging with tracing                                   | api/events.rs: tracing::* macros                                           |
+| Comprehensive documentation                                       | README.md, ASSIGNMENT.md                                                   |
+| Advanced testing: container + local                               | tests/integration.rs: start_container_server(), start_test_server()        |
+| Clean architecture: trait-based injection                         | lib.rs, domain/repository.rs, repository/*.rs                              |
+| TDD with bug discovery                                            | ASSIGNMENT.md: TDD section                                                 |
+| Graceful shutdown (verified, logged)                              | main.rs: with_graceful_shutdown()                                          |
+| Query param validation: start < end                               | api/events.rs: parse_query()                                               |
+| GET /events?type=...,start=...,end=... fully tested               | tests/integration.rs: post_multiple_events_and_filter_by_type() and others |
