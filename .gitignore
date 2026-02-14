@@ -3,6 +3,7 @@
 debug/
 target/
 .vscode
+Notes.txt
 /TAGS
 *~
 *.swp
